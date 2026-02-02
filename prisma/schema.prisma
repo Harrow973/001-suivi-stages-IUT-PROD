@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client"
+  output        = "../src/generated"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Departement {
+  INFO
+  GEA
+  HSE
+  MLT
+  TC
+}
+
+enum TailleEntreprise {
+  TPE
+  PME
+  ETI
+  GE
+}
+
+model Entreprise {
+  id                  Int             @id @default(autoincrement())
+  nom                 String          @db.VarChar(100)
+  adresse             String?         @db.Text
+  secteur             String?         @db.VarChar(50)
+  telephone           String?         @db.VarChar(20)
+  email               String?         @db.VarChar(100)
+  siret               String?         @db.VarChar(14) // Numéro SIRET (14 chiffres)
+  tailleEntreprise    TailleEntreprise? @map("taille_entreprise") // TPE, PME, ETI, GE
+  estActive           Boolean         @default(true) @map("est_active") // Statut actif/inactif
+  representantNom     String?         @db.VarChar(100) @map("representant_nom") // Nom du signataire de la convention
+  representantQualite String?         @db.VarChar(200) @map("representant_qualite") // Qualité/fonction du représentant
+  departement         Departement     @default(INFO)
+  tuteurs             Tuteur[]
+  stages              Stage[]
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  @@map("entreprises")
+}
+
+model Etudiant {
+  id               Int         @id @default(autoincrement())
+  nom              String      @db.VarChar(50)
+  prenom           String      @db.VarChar(50)
+  email            String?     @db.VarChar(100)
+  departement      Departement @default(INFO)
+  promotion        Int?        @default(2) // 1, 2, ou 3
+  anneeUniversitaire String?   @db.VarChar(9) @map("anneeUniversitaire") // Format: "2024-2025", "2025-2026", etc.
+  stages           Stage[]
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  @@map("etudiants")
+}
+
+model Tuteur {
+  id                 Int         @id @default(autoincrement())
+  nom                String      @db.VarChar(50)
+  prenom             String      @db.VarChar(50)
+  telephone          String?     @db.VarChar(20)
+  email              String?     @db.VarChar(100)
+  departement        Departement @default(INFO)
+  idEntreprise       Int?        @map("id_entreprise")
+  entreprise         Entreprise? @relation(fields: [idEntreprise], references: [id], onDelete: SetNull)
+  stages             Stage[]
+  etudiantsActuels   String?     @map("etudiants_actuels") @db.Text
+  etudiantsHistorique String?    @map("etudiants_historique") @db.Text
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  @@map("tuteurs")
+}
+
+model Enseignant {
+  id                 Int         @id @default(autoincrement())
+  nom                String      @db.VarChar(50)
+  prenom             String      @db.VarChar(50)
+  telephone          String?     @db.VarChar(20)
+  email              String?     @db.VarChar(100)
+  departement        Departement @default(INFO)
+  referentsStage     ReferentStage[]
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  @@map("enseignants")
+}
+
+enum StatutStage {
+  ACTIF
+  TERMINE
+  ANNULE
+}
+
+model Stage {
+  id               Int         @id @default(autoincrement())
+  sujet            String      @db.VarChar(100)
+  description      String?     @db.Text
+  dateDebut        DateTime    @db.Date @map("date_debut")
+  dateFin          DateTime    @db.Date @map("date_fin")
+  statut           StatutStage @default(ACTIF)
+  departement      Departement @default(INFO)
+  promotion        Int?        // 1, 2, ou 3 (héritée de l'étudiant ou définie manuellement)
+  anneeUniversitaire String?   @db.VarChar(9) @map("anneeUniversitaire") // Format: "2024-2025", "2025-2026", etc.
+  idEntreprise     Int?        @map("id_entreprise")
+  idEtudiant       Int?        @map("id_etudiant")
+  idTuteur         Int?        @map("id_tuteur")
+  entreprise       Entreprise? @relation(fields: [idEntreprise], references: [id], onDelete: SetNull)
+  etudiant         Etudiant?   @relation(fields: [idEtudiant], references: [id], onDelete: SetNull)
+  tuteur           Tuteur?     @relation(fields: [idTuteur], references: [id], onDelete: SetNull)
+  visitesSuivi     VisiteSuiviStage[]
+  conventions      ConventionStage[]
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  @@map("stages")
+}
+
+model ReferentStage {
+  id                 Int         @id @default(autoincrement())
+  departement        Departement @default(INFO)
+  promotion          Int         // 1, 2, ou 3
+  anneeUniversitaire String      @db.VarChar(9) @map("annee_universitaire") // Format: "2024-2025", "2025-2026", etc.
+  idEnseignant       Int         @map("id_enseignant")
+  enseignant         Enseignant  @relation(fields: [idEnseignant], references: [id], onDelete: Cascade)
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  @@unique([departement, promotion, anneeUniversitaire])
+  @@map("referents_stage")
+}
+
+model VisiteSuiviStage {
+  id               Int      @id @default(autoincrement())
+  idStage          Int      @map("id_stage")
+  stage            Stage    @relation(fields: [idStage], references: [id], onDelete: Cascade)
+  numeroVisite     Int      @default(1) @map("numero_visite") // Numéro de la visite (1, 2, 3, etc.)
+  dateVisite       DateTime? @db.Date @map("date_visite")
+  // Données du formulaire stockées en JSON
+  donneesFormulaire Json    @map("donnees_formulaire") // Contient FormulaireSuiviStage
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@unique([idStage, numeroVisite])
+  @@map("visites_suivi_stage")
+}
+
+model ConventionStage {
+  id               Int      @id @default(autoincrement())
+  idStage           Int?     @map("id_stage")
+  stage             Stage?   @relation(fields: [idStage], references: [id], onDelete: SetNull)
+  nomFichier        String   @db.VarChar(255) @map("nom_fichier")
+  cheminFichier     String   @db.VarChar(500) @map("chemin_fichier") // Chemin relatif dans public/uploads/conventions/
+  tailleFichier     Int      @map("taille_fichier") // Taille en octets
+  // Données extraites de la convention (optionnel, pour recherche/filtrage)
+  nomEtudiant       String?  @db.VarChar(50) @map("nom_etudiant")
+  prenomEtudiant    String?  @db.VarChar(50) @map("prenom_etudiant")
+  nomEntreprise     String?  @db.VarChar(100) @map("nom_entreprise")
+  departement       Departement @default(INFO)
+  promotion         Int?     // 1, 2, ou 3
+  anneeUniversitaire String? @db.VarChar(9) @map("annee_universitaire")
+  dateUpload        DateTime @default(now()) @map("date_upload")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("conventions_stage")
+}
