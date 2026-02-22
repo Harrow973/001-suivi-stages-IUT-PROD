@@ -1,4 +1,4 @@
-# Système de Gestion des Stages - IUT de la Martinique
+# Système de Gestion des Stages - IUT de la Martinique REFONTE EN COURS Changement de STACK
 
 Application web complète de gestion des stages pour l'IUT de la Martinique, développée avec Next.js 16, TypeScript, Tailwind CSS, PostgreSQL et Docker.
 
