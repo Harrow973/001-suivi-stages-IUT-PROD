@@ -130,7 +130,35 @@ docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deplo
 | `.env.production` manquant | Le script le crée depuis `ENV.example` ; éditez-le puis relancez |
 | Erreur de migration | `docker compose -f docker-compose.prod.yml logs postgres` |
 | App ne démarre pas | `docker compose -f docker-compose.prod.yml logs app` |
-| Connexion refusée | Vérifier que Nginx proxy vers `localhost:3003` |
+| 502 Bad Gateway | Vérifier `DATABASE_URL` (doit être `postgres:5432` dans Docker) ; redémarrer l'app |
+| Page blanche | Vérifier `NEXT_PUBLIC_APP_URL` = votre domaine ; **reconstruire** : `docker compose up -d --build app` |
+
+### Diagnostic page blanche
+
+```bash
+# 1. L'app répond-elle directement ?
+curl -I http://127.0.0.1:3003/
+
+# 2. Réponse HTTP (200 = OK) et contenu HTML
+curl -s http://127.0.0.1:3003/ | head -20
+
+# 3. NEXT_PUBLIC_APP_URL doit correspondre au domaine exact
+grep NEXT_PUBLIC_APP_URL .env.production
+# → https://logistidom.com (sans slash final)
+
+# 4. Après modification de .env.production : reconstruire obligatoirement
+docker compose -f docker-compose.prod.yml up -d --build app
+```
+
+### Mise à jour de la config Nginx sur le serveur
+
+Après modification de `nginx.conf` dans le projet :
+
+```bash
+sudo sed -i 's/votre-domaine\.fr/logistidom.com/g' /etc/nginx/sites-available/logistidom.com
+sudo sed -i 's/localhost:3003/127.0.0.1:3003/g' /etc/nginx/sites-available/logistidom.com
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ---
 
