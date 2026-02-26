@@ -246,7 +246,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Erreur lors de la création du stage',
-        details: error instanceof Error ? error.message : 'Erreur inconnue',
       },
       { status: 500 }
     )

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { FormulaireSuiviStage } from '@/types'
+import { formulaireSuiviStageSchema, FORMULAIRE_SUIVI_MAX_BYTES } from '@/lib/validations'
 
 // GET : Récupérer une visite spécifique
 export async function GET(
@@ -74,7 +74,26 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const formulaire: FormulaireSuiviStage = body.formulaire
+    const rawFormulaire = body.formulaire
+
+    if (!rawFormulaire) {
+      return NextResponse.json(
+        { error: 'Le formulaire est requis' },
+        { status: 400 }
+      )
+    }
+
+    if (JSON.stringify(rawFormulaire).length > FORMULAIRE_SUIVI_MAX_BYTES) {
+      return NextResponse.json(
+        { error: 'Le formulaire est trop volumineux' },
+        { status: 400 }
+      )
+    }
+
+    const formulaire = formulaireSuiviStageSchema.parse({
+      ...rawFormulaire,
+      idStage
+    })
 
     let visite
     try {

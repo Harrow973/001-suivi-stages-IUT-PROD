@@ -2,6 +2,8 @@
 
 Ce guide explique comment déployer l'application de suivi de stages sur un serveur (VPS ou serveur de l'établissement, ex. IUT).
 
+> **Guide condensé** : Pour un rappel rapide des étapes avec `./deploy.sh`, voir `DEPLOI-RAPIDE.md`.
+
 ## 📋 Prérequis
 
 - Serveur avec accès root/sudo (VPS KVM ou serveur de l'IUT)
@@ -117,8 +119,8 @@ NEXT_PUBLIC_APP_URL=https://votre-domaine.fr
 
 **Note sur DATABASE_URL** :
 
-- Depuis le conteneur `app` : `postgresql://postgres:password@postgres:5432/gestion_stages?schema=public`
-- Depuis l'hôte (pour migrations manuelles) : `postgresql://postgres:password@localhost:5434/gestion_stages?schema=public`
+- Depuis les conteneurs `app` et `node` : `postgresql://postgres:password@postgres:5432/gestion_stages?schema=public`
+- Depuis l'hôte (pour migrations manuelles avec Node.js local) : `postgresql://postgres:password@localhost:5434/gestion_stages?schema=public`
 
 ### 3. Configuration SSL avec Let's Encrypt
 
@@ -154,6 +156,12 @@ sudo systemctl reload nginx
 
 **Note importante** : L'application est configurée pour écouter sur le port **3003** côté hôte (mappé depuis le port 3000 du conteneur). Nginx doit être configuré pour proxy vers `localhost:3003`.
 
+**Services Docker** :
+
+- `postgres` : Base de données PostgreSQL 15
+- `app` : Application Next.js (production)
+- `node` : Service Node.js pour migrations, scripts et maintenance (utilisé via `docker compose run`)
+
 #### 4.1 Construire et démarrer les services
 
 ```bash
@@ -167,8 +175,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 # Attendre que PostgreSQL soit prêt (10-15 secondes)
 sleep 15
 
-# Exécuter les migrations depuis le conteneur
-docker compose -f docker-compose.prod.yml exec app npm run db:migrate
+# Exécuter les migrations via le service Node.js dédié
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy
 ```
 
 #### 4.3 Configuration Groq Cloud (optionnel)
@@ -244,6 +252,26 @@ docker compose -f docker-compose.prod.yml restart app
 docker compose -f docker-compose.prod.yml up -d --build app
 ```
 
+### Service Node.js (migrations, scripts, maintenance)
+
+Le service `node` fournit un environnement Node.js complet pour exécuter Prisma et les scripts :
+
+```bash
+# Appliquer les migrations
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy
+
+# Importer des données de test
+docker compose -f docker-compose.prod.yml run --rm node npm run db:import
+
+# Ouvrir Prisma Studio (interface graphique)
+docker compose -f docker-compose.prod.yml run --rm -p 5555:5555 node npx prisma studio
+
+# Générer le client Prisma
+docker compose -f docker-compose.prod.yml run --rm node npx prisma generate
+```
+
+**Note** : Le service `node` utilise `DATABASE_URL` pointant vers `postgres:5432` (réseau Docker interne).
+
 ### Base de données
 
 ```bash
@@ -286,8 +314,8 @@ git pull
 # 3. Reconstruire et redémarrer l'application
 docker compose -f docker-compose.prod.yml up -d --build app
 
-# 4. Appliquer les migrations si nécessaire
-docker compose -f docker-compose.prod.yml exec app npm run db:migrate
+# 4. Appliquer les migrations via le service Node.js
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy
 
 # 5. Vérifier les logs
 docker compose -f docker-compose.prod.yml logs -f app
@@ -430,7 +458,7 @@ docker compose -f docker-compose.prod.yml restart
 - [ ] Certificat SSL obtenu avec Certbot
 - [ ] Fichier `.env.production` configuré avec les bonnes valeurs
 - [ ] Services Docker démarrés (`docker compose ps`)
-- [ ] Migrations appliquées (`npm run db:migrate`)
+- [ ] Migrations appliquées (`docker compose run --rm node npx prisma migrate deploy`)
 - [ ] Application accessible en HTTPS (URL configurée dans `NEXT_PUBLIC_APP_URL`)
 - [ ] Firewall configuré (optionnel mais recommandé)
 - [ ] Sauvegardes configurées (optionnel mais recommandé)

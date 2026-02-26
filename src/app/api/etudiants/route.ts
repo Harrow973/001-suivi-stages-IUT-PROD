@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createErrorResponse } from '@/lib/error-handler'
+import { etudiantSchema } from '@/lib/validations'
 
 // Route segment config
 export const dynamic = 'force-dynamic'
@@ -237,15 +238,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const validated = etudiantSchema.parse(body)
+
+    const promotionNum = validated.promotion != null
+      ? (typeof validated.promotion === 'string' ? parseInt(validated.promotion, 10) : validated.promotion)
+      : 2
 
     const etudiant = await prisma.etudiant.create({
       data: {
-        nom: body.nom,
-        prenom: body.prenom,
-        email: body.email || null,
-        departement: body.departement || 'INFO',
-        promotion: body.promotion ? parseInt(body.promotion) : 2,
-        anneeUniversitaire: body.annee_universitaire || null
+        nom: validated.nom,
+        prenom: validated.prenom,
+        email: validated.email || null,
+        departement: validated.departement || 'INFO',
+        promotion: promotionNum,
+        anneeUniversitaire: validated.annee_universitaire || null
       }
     })
 

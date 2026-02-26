@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { FormulaireSuiviStage } from '@/types'
+import { formulaireSuiviStageSchema, FORMULAIRE_SUIVI_MAX_BYTES } from '@/lib/validations'
 
 // GET : Récupérer toutes les visites pour un stage
 export async function GET(
@@ -85,24 +85,36 @@ export async function POST(
     const numeroVisite = dernierVisite ? dernierVisite.numeroVisite + 1 : 1
 
     const body = await request.json()
-    const formulaire: FormulaireSuiviStage = body.formulaire || {
+
+    // Limiter la taille du JSON pour éviter DoS
+    const rawFormulaire = body.formulaire
+    if (rawFormulaire && JSON.stringify(rawFormulaire).length > FORMULAIRE_SUIVI_MAX_BYTES) {
+      return NextResponse.json(
+        { error: 'Le formulaire est trop volumineux' },
+        { status: 400 }
+      )
+    }
+
+    const defaultFormulaire = {
       idStage,
-      suiviStagiaire: {
-        autoEvaluation: {}
-      },
+      suiviStagiaire: { autoEvaluation: {} },
       suiviTuteurEntreprise: {
         comportementSavoirEtre: {},
         competencesProfessionnelles: {},
         adequationStage: {}
       },
       suiviTuteurPedagogique: {
-        informationsVisite: {
-          presents: {}
-        },
+        informationsVisite: { presents: {} },
         verificationCadrePedagogique: {},
         validationPeriode: {}
       }
     }
+
+    const formulaireInput = rawFormulaire || defaultFormulaire
+    const formulaire = formulaireSuiviStageSchema.parse({
+      ...formulaireInput,
+      idStage
+    })
 
     let visite
     try {

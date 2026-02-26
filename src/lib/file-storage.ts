@@ -98,3 +98,21 @@ export function isOldPath(cheminFichier: string): boolean {
   return cheminFichier.startsWith('/uploads/') || cheminFichier.startsWith('uploads/');
 }
 
+/**
+ * Vérifie que le buffer contient un PDF valide via les magic bytes.
+ * Les PDF commencent par %PDF (0x25 0x50 0x44 0x46).
+ * Évite d'accepter des fichiers malveillants renommés en .pdf
+ */
+export function isPdfBuffer(buffer: Buffer): boolean {
+  return buffer.length >= 4 && buffer.toString('ascii', 0, 4) === '%PDF';
+}
+
+/**
+ * Sanitise un nom de fichier pour l'affichage et le stockage en base.
+ * Supprime les séquences path traversal et les caractères de contrôle.
+ */
+export function sanitizeFileNameForDisplay(originalName: string): string {
+  const withoutPath = originalName.replace(/\.\./g, '').split(/[/\\]/).pop() || 'document.pdf';
+  return withoutPath.replace(/[\x00-\x1f\x7f]/g, '').slice(0, 255) || 'document.pdf';
+}
+

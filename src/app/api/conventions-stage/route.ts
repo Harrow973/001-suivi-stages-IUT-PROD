@@ -8,7 +8,9 @@ import {
   ensureStorageDirs, 
   getConventionPath, 
   generateSafeFileName, 
-  getStorageRelativePath 
+  getStorageRelativePath,
+  isPdfBuffer,
+  sanitizeFileNameForDisplay
 } from '@/lib/file-storage'
 
 // Route segment config
@@ -105,19 +107,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérifier que c'est un PDF
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      return NextResponse.json(
-        { error: 'Le fichier doit être un PDF' },
-        { status: 400 }
-      )
-    }
-
     // Vérifier la taille du fichier (max 10MB)
     const maxSize = 10 * 1024 * 1024 // 10MB
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: 'Le fichier est trop volumineux (max 10MB)' },
+        { status: 400 }
+      )
+    }
+
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Vérifier magic bytes PDF (sécurité : éviter fichiers malveillants renommés)
+    if (!isPdfBuffer(buffer)) {
+      return NextResponse.json(
+        { error: 'Le fichier n\'est pas un PDF valide' },
+        { status: 400 }
+      )
+    }
+
+    // Vérification extension/MIME en complément
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      return NextResponse.json(
+        { error: 'Le fichier doit être un PDF' },
         { status: 400 }
       )
     }
@@ -131,15 +144,16 @@ export async function POST(request: NextRequest) {
     const relativePath = getStorageRelativePath(fileName, 'convention')
 
     // Sauvegarder le fichier
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
     await writeFile(filePath, buffer)
+
+    // Nom sanitisé pour affichage (éviter path traversal, caractères de contrôle)
+    const nomFichierSafe = sanitizeFileNameForDisplay(file.name)
 
     // Créer l'enregistrement en base de données
     const convention = await prisma.conventionStage.create({
       data: {
         idStage: idStage,
-        nomFichier: file.name,
+        nomFichier: nomFichierSafe,
         cheminFichier: relativePath,
         tailleFichier: file.size,
         nomEtudiant: nomEtudiant,

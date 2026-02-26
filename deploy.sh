@@ -59,25 +59,11 @@ sleep 15
 
 echo ""
 echo "🔄 Application des migrations de base de données..."
-# Le port 5434 est exposé, on peut exécuter les migrations depuis l'hôte
-# Vérifier que .env existe avec DATABASE_URL pointant vers localhost:5434
-if [ -f ".env" ] && grep -q "localhost:5434" .env; then
-    echo "   Exécution depuis l'hôte (port 5434 exposé)..."
-    npm run db:migrate || {
-        echo "⚠️  Tentative depuis le conteneur..."
-        docker compose -f docker-compose.prod.yml exec -T app sh -c "cd /app && npx prisma migrate deploy" || {
-            echo "⚠️  Les migrations ont peut-être déjà été appliquées ou une erreur s'est produite"
-            echo "   Vérifiez les logs avec: docker compose -f docker-compose.prod.yml logs app"
-        }
-    }
-else
-    echo "   Exécution depuis le conteneur..."
-    docker compose -f docker-compose.prod.yml exec -T app sh -c "cd /app && npx prisma migrate deploy" || {
-        echo "⚠️  Les migrations ont peut-être déjà été appliquées ou une erreur s'est produite"
-        echo "   Vérifiez les logs avec: docker compose -f docker-compose.prod.yml logs app"
-        echo "   Alternative: Créez un fichier .env avec DATABASE_URL pointant vers localhost:5434"
-    }
-fi
+# Utilise le service Node.js dédié (connexion postgres:5432 via le réseau Docker)
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy || {
+    echo "⚠️  Les migrations ont peut-être déjà été appliquées ou une erreur s'est produite"
+    echo "   Vérifiez les logs avec: docker compose -f docker-compose.prod.yml logs postgres"
+}
 
 echo ""
 echo "🤖 Configuration de Groq Cloud..."

@@ -1,4 +1,23 @@
 services:
+  # Service Node.js : migrations, scripts, maintenance (npx prisma, npm run db:import, etc.)
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: node
+    container_name: gestion-stages-node
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-gestion_stages}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    # Utiliser pour les commandes : docker compose run --rm node npx prisma migrate deploy
+
   postgres:
     image: postgres:15-alpine
     container_name: gestion-stages-db
@@ -9,8 +28,9 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME:-gestion_stages}
+    # Port lié à 127.0.0.1 uniquement (non exposé sur l'internet) pour migrations/backup depuis l'hôte
     ports:
-      - "${DB_PORT:-5434}:5432"
+      - "127.0.0.1:${DB_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

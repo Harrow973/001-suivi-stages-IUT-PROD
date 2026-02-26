@@ -18,10 +18,14 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith('/api/')) {
     response.headers.set('X-Content-Type-Options', 'nosniff')
     response.headers.set('X-Frame-Options', 'DENY')
-    
-    // CORS headers pour les routes API (ajuster selon vos besoins)
+
+    // CORS : liste stricte d'origines autorisées (éviter evil-localhost.com etc.)
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean)
     const origin = request.headers.get('origin')
-    if (origin && origin.includes(process.env.NEXT_PUBLIC_APP_URL || 'localhost')) {
+    if (origin && allowedOrigins.includes(origin)) {
       response.headers.set('Access-Control-Allow-Origin', origin)
       response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
       response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')

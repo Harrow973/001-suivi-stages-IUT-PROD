@@ -468,11 +468,27 @@ npm run db:migrate
 
 ### Configuration
 
-Le projet utilise Docker Compose pour PostgreSQL en développement. La configuration se trouve dans `docker-compose.yml`. Utilisez la commande `docker compose` (avec un espace) au lieu de `docker-compose`.
+Le projet utilise Docker Compose pour PostgreSQL en développement (`docker-compose.yml`) et pour la production (`docker-compose.prod.yml`). Utilisez la commande `docker compose` (avec un espace) au lieu de `docker-compose`.
+
+**Production** : Le fichier `docker-compose.prod.yml` définit trois services :
+
+- `postgres` : Base de données PostgreSQL 15
+- `app` : Application Next.js (production)
+- `node` : Service Node.js pour migrations, scripts et maintenance
+
+Pour exécuter des commandes Prisma en production :
+
+```bash
+# Migrations
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy
+
+# Import de données
+docker compose -f docker-compose.prod.yml run --rm node npm run db:import
+```
 
 ### Variables d'environnement
 
-Assurez-vous de configurer les variables suivantes dans `.env.local` :
+Assurez-vous de configurer les variables suivantes dans `.env.local` (développement) ou `.env.production` (production) :
 
 - `DATABASE_URL` - URL de connexion PostgreSQL
 - `DB_USER` - Utilisateur PostgreSQL (défaut: postgres)
@@ -484,6 +500,8 @@ Assurez-vous de configurer les variables suivantes dans `.env.local` :
 
 Pour plus d'informations sur :
 
+- **Déploiement** : voir `DEPLOI-RAPIDE.md` (guide condensé) ou `DEPLOY.md` (guide complet) ; script automatisé : `./deploy.sh`
+- **Production** : voir `PRODUCTION.md` pour la configuration et les bonnes pratiques
 - Les scripts disponibles : voir `scripts/README.md`
 - Le schéma de base de données : voir `prisma/schema.prisma`
 - Les types TypeScript : voir `src/types/index.ts`

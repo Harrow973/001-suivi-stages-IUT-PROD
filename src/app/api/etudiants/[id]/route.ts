@@ -152,7 +152,9 @@ export async function PUT(
     }
 
     // Mettre à jour l'étudiant
-    const promotionValue = validatedData.promotion && validatedData.promotion !== 'none' ? parseInt(validatedData.promotion) : null
+    const promotionValue = validatedData.promotion != null && validatedData.promotion !== 'none'
+      ? (typeof validatedData.promotion === 'number' ? validatedData.promotion : parseInt(String(validatedData.promotion), 10))
+      : null
     const anneeUniversitaireValue = validatedData.annee_universitaire || null
 
     const updatedEtudiant = await prisma.etudiant.update({

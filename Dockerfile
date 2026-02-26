@@ -85,3 +85,25 @@ ENV HOSTNAME "0.0.0.0"
 
 CMD ["node", "server.js"]
 
+# =============================================================================
+# Stage Node.js : pour exécuter migrations, scripts et commandes maintenance
+# Usage: docker compose run --rm node npx prisma migrate deploy
+# =============================================================================
+FROM base AS node
+WORKDIR /app
+
+# Copier les dépendances et outils nécessaires pour Prisma et scripts
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src/generated ./src/generated
+
+ENV PATH="/app/node_modules/.bin:$PATH"
+ENV NODE_ENV=production
+
+# Par défaut, garder le conteneur actif pour exécuter des commandes
+CMD ["tail", "-f", "/dev/null"]
+

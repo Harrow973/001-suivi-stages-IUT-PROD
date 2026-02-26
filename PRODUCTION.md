@@ -146,30 +146,31 @@ mkdir -p storage/uploads/validations
 
 ### Avec Docker Compose (Recommandé)
 
-Démarrez la base de données et l'application :
+Utilisez `docker-compose.prod.yml` pour la production :
 
 ```bash
-# 1. Démarrer PostgreSQL
-docker compose up -d postgres
+# 1. Construire et démarrer les services
+docker compose -f docker-compose.prod.yml up -d --build
 
 # 2. Attendre que PostgreSQL soit prêt (10-15 secondes)
-docker compose ps
+sleep 15
 
-# 3. Appliquer les migrations
-npm run db:migrate
-
-# 4. Construire l'image Docker
-docker build -t gestion-stages .
-
-# 5. Lancer l'application
-docker run -p 3000:3000 --env-file .env.local --network host gestion-stages
+# 3. Appliquer les migrations via le service Node.js
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy
 ```
 
 **Note :** Utilisez `docker compose` (avec un espace) au lieu de `docker-compose` (avec un tiret).
 
+**Services Docker** :
+
+- `postgres` : Base de données PostgreSQL 15
+- `app` : Application Next.js (production)
+- `node` : Service Node.js pour migrations, scripts et maintenance (`docker compose run --rm node <commande>`)
+
 **Caractéristiques du Dockerfile** :
 
 - Build multi-stage pour optimiser la taille de l'image
+- Stage `node` dédié pour Prisma et scripts (migrations, import, etc.)
 - User non-root (`nextjs:nodejs`) pour la sécurité
 - Mode standalone Next.js (image minimale)
 - Dossiers de stockage créés automatiquement avec les bonnes permissions
@@ -261,14 +262,29 @@ npm run db:migrate-referents  # Migrer les référents vers enseignants
 npm run lint             # Vérifier le code avec ESLint
 ```
 
+### Service Node.js (production Docker)
+
+Pour exécuter des commandes Prisma ou des scripts en production :
+
+```bash
+# Migrations
+docker compose -f docker-compose.prod.yml run --rm node npx prisma migrate deploy
+
+# Import de données
+docker compose -f docker-compose.prod.yml run --rm node npm run db:import
+
+# Prisma Studio
+docker compose -f docker-compose.prod.yml run --rm -p 5555:5555 node npx prisma studio
+```
+
 ### Checklist de déploiement
 
 Avant de déployer en production, vérifiez :
 
-- [ ] Variables d'environnement configurées (`.env.local` ou variables système)
+- [ ] Variables d'environnement configurées (`.env.production` ou variables système)
 - [ ] `NODE_ENV=production` défini
-- [ ] `DATABASE_URL` pointe vers la base de production
-- [ ] Migrations appliquées (`npm run db:migrate`)
+- [ ] `DATABASE_URL` pointe vers la base de production (ou `postgres:5432` pour les conteneurs)
+- [ ] Migrations appliquées (`docker compose run --rm node npx prisma migrate deploy`)
 - [ ] Build testé localement (`npm run build && npm start`)
 - [ ] Secrets et mots de passe changés (pas les valeurs par défaut)
 - [ ] HTTPS configuré (certificat SSL/TLS)

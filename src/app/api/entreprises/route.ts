@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createErrorResponse } from '@/lib/error-handler'
+import { entrepriseSchema } from '@/lib/validations'
 
 // Route segment config
 export const dynamic = 'force-dynamic'
@@ -58,15 +59,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const validated = entrepriseSchema.parse(body)
 
     const entreprise = await prisma.entreprise.create({
       data: {
-        nom: body.nom,
-        adresse: body.adresse || null,
-        secteur: body.secteur || null,
-        telephone: body.telephone || null,
-        email: body.email || null,
-        departement: body.departement || 'INFO'
+        nom: validated.nom,
+        adresse: validated.adresse || null,
+        secteur: validated.secteur || null,
+        telephone: validated.telephone || null,
+        email: validated.email || null,
+        departement: validated.departement || 'INFO',
+        siret: validated.siret || null,
+        tailleEntreprise: validated.tailleEntreprise || null,
+        estActive: validated.estActive ?? true
       }
     })
 

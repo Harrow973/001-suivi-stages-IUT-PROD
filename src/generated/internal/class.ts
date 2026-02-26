@@ -23,7 +23,7 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client"
     },
     "output": {
-      "value": "/Users/jean-mi/Desktop/IUT/001-suivi-stages-IUT-PROD/src/generated",
+      "value": "/Users/jean-mi/Desktop/IUT/TEST-APP/001-suivi-stages-IUT-PROD/src/generated",
       "fromEnvVar": null
     },
     "config": {
@@ -41,7 +41,7 @@ const config: runtime.GetPrismaClientConfig = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/Users/jean-mi/Desktop/IUT/001-suivi-stages-IUT-PROD/prisma/schema.prisma",
+    "sourceFilePath": "/Users/jean-mi/Desktop/IUT/TEST-APP/001-suivi-stages-IUT-PROD/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../prisma",

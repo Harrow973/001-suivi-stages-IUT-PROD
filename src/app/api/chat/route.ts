@@ -34,6 +34,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Limite de longueur pour mitiger prompt injection et abus
+    const MAX_MESSAGE_LENGTH = 2000;
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
+      return NextResponse.json(
+        { error: `Le message ne doit pas dépasser ${MAX_MESSAGE_LENGTH} caractères` },
+        { status: 400 }
+      );
+    }
+
+    // Filtrage basique des tentatives de prompt injection évidentes
+    const injectionPatterns = [
+      /ignore\s+(all\s+)?(previous|prior)\s+instructions/i,
+      /disregard\s+(all\s+)?(previous|prior)/i,
+      /you\s+are\s+now\s+/i,
+      /pretend\s+you\s+are/i,
+      /act\s+as\s+if\s+you/i,
+      /system\s*:\s*/i,
+      /\[INST\]/i,
+    ];
+    if (injectionPatterns.some((p) => p.test(trimmedMessage))) {
+      return NextResponse.json(
+        { error: "Votre message contient des instructions non autorisées. Reformulez votre question." },
+        { status: 400 }
+      );
+    }
+
     // Limiter l'historique à 4 derniers messages (2 échanges) pour rester sous la limite TPM Groq (6K/min)
     const limitedHistory = Array.isArray(history)
       ? history.slice(-4)
@@ -68,11 +95,18 @@ CONVENTION (résumé) : Établissement (Université des Antilles, IUT Martinique
 
 TON RÔLE : Aider sur recherche de stage, CV, lettres de motivation, entretiens, démarches (convention, validation). Pour une info très précise ou qui peut changer, redirige vers le site IUT, le secrétariat ou l'enseignant référent.`;
 
+    // Limiter la longueur de chaque message dans l'historique
+    const maxHistoryMsgLength = 1000;
+    const sanitizedHistory = limitedHistory.map((m: { role?: string; content?: string }) => ({
+      role: m.role === "assistant" || m.role === "user" ? m.role : "user",
+      content: typeof m.content === "string" ? m.content.slice(0, maxHistoryMsgLength) : "",
+    })).filter((m: { content: string }) => m.content.length > 0);
+
     // Construire les messages pour Groq avec historique limité
     const messages = [
       { role: "system", content: systemPrompt },
-      ...limitedHistory,
-      { role: "user", content: message.trim() },
+      ...sanitizedHistory,
+      { role: "user", content: trimmedMessage },
     ];
 
     // Appeler Groq Cloud API

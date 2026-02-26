@@ -4,14 +4,22 @@
 
 import JSZip from 'jszip'
 
+/** Caractères de début de formule Excel (CSV injection) */
+const FORMULA_START_CHARS = ['=', '+', '-', '@', '\t', '\r']
+
 /**
- * Échappe une valeur pour le format CSV
+ * Échappe une valeur pour le format CSV.
+ * Protège contre la CSV injection (formules Excel : =, +, -, @).
  */
 function escapeCSV(value: any): string {
   if (value === null || value === undefined) {
     return ''
   }
-  const stringValue = String(value)
+  let stringValue = String(value)
+  // Préfixer par une apostrophe pour neutraliser les formules Excel
+  if (FORMULA_START_CHARS.some((c) => stringValue.startsWith(c))) {
+    stringValue = "'" + stringValue
+  }
   // Si la valeur contient des virgules, des guillemets ou des retours à la ligne, on l'entoure de guillemets
   if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
     return `"${stringValue.replace(/"/g, '""')}"`

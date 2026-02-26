@@ -90,19 +90,35 @@ export const uploadRateLimiter = new RateLimiter(10, 60000); // 10 uploads par m
 export const chatRateLimiter = new RateLimiter(30, 60000); // 30 messages par minute
 
 /**
+ * Extrait l'IP client de manière sécurisée pour le rate limiting.
+ * En production derrière Nginx : X-Real-IP est défini par le proxy (fiable).
+ * X-Forwarded-For peut être spoofé si l'app est exposée directement.
+ */
+function getClientIp(request: Request): string {
+  const realIp = request.headers.get('x-real-ip')
+  const forwarded = request.headers.get('x-forwarded-for')
+  // En production derrière un proxy de confiance, privilégier X-Real-IP
+  const isBehindTrustedProxy = process.env.NODE_ENV === 'production'
+  if (isBehindTrustedProxy && realIp) {
+    return realIp.trim()
+  }
+  // Sinon : dernier IP de X-Forwarded-For (côté client) ou X-Real-IP
+  if (forwarded) {
+    const firstIp = forwarded.split(',')[0].trim()
+    if (firstIp) return firstIp
+  }
+  return realIp?.trim() || 'unknown'
+}
+
+/**
  * Middleware helper pour vérifier le rate limit
  */
 export function checkRateLimit(
   request: Request,
   limiter: RateLimiter
 ): { allowed: boolean; response?: Response } {
-  // Utiliser l'IP comme identifiant (en production, utiliser un proxy de confiance)
-  const forwarded = request.headers.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0].trim() : 
-             request.headers.get('x-real-ip') || 
-             'unknown';
-
-  const result = limiter.check(ip);
+  const ip = getClientIp(request)
+  const result = limiter.check(ip)
 
   if (!result.allowed) {
     return {

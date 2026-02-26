@@ -189,18 +189,18 @@ async function importData() {
     const maxEtudiantId = Math.max(...etudiantsData.map(e => e.id))
     const maxStageId = Math.max(...stagesData.map(s => s.id))
 
-    await prisma.$executeRawUnsafe(
-      `SELECT setval('entreprises_id_seq', GREATEST(${maxEntrepriseId}, (SELECT MAX(id) FROM entreprises)))`
-    )
-    await prisma.$executeRawUnsafe(
-      `SELECT setval('tuteurs_id_seq', GREATEST(${maxTuteurId}, (SELECT MAX(id) FROM tuteurs)))`
-    )
-    await prisma.$executeRawUnsafe(
-      `SELECT setval('etudiants_id_seq', GREATEST(${maxEtudiantId}, (SELECT MAX(id) FROM etudiants)))`
-    )
-    await prisma.$executeRawUnsafe(
-      `SELECT setval('stages_id_seq', GREATEST(${maxStageId}, (SELECT MAX(id) FROM stages)))`
-    )
+    await prisma.$executeRaw`
+      SELECT setval('entreprises_id_seq', GREATEST(${maxEntrepriseId}, (SELECT COALESCE(MAX(id), 0) FROM entreprises)))
+    `
+    await prisma.$executeRaw`
+      SELECT setval('tuteurs_id_seq', GREATEST(${maxTuteurId}, (SELECT COALESCE(MAX(id), 0) FROM tuteurs)))
+    `
+    await prisma.$executeRaw`
+      SELECT setval('etudiants_id_seq', GREATEST(${maxEtudiantId}, (SELECT COALESCE(MAX(id), 0) FROM etudiants)))
+    `
+    await prisma.$executeRaw`
+      SELECT setval('stages_id_seq', GREATEST(${maxStageId}, (SELECT COALESCE(MAX(id), 0) FROM stages)))
+    `
     console.log('✅ Séquences réinitialisées\n')
 
     console.log('🎉 Importation terminée avec succès!')
