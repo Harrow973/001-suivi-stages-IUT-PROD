@@ -14,8 +14,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - app-network
     # Utiliser pour les commandes : docker compose run --rm node npx prisma migrate deploy
 
   postgres:
@@ -38,8 +36,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - app-network
 
   app:
     build:
@@ -65,14 +61,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - app-network
 
 volumes:
   postgres_data:
   storage_data:
-
-networks:
-  app-network:
-    driver: bridge
 
