@@ -9,7 +9,7 @@ services:
     env_file:
       - .env
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
       # Connexion DB depuis le conteneur via le nom du service "postgres"
@@ -29,10 +29,11 @@ services:
         condition: service_healthy
     command: >
       sh -lc
-      "npm install
+      "npm install --include=dev
       && npx prisma generate
       && npx prisma migrate deploy
-      && npm run dev -- --hostname 0.0.0.0 --port 3000"
+      && npm run build
+      && npm run start"
 
   postgres:
     image: postgres:15-alpine
